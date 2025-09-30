@@ -1,0 +1,148 @@
+---
+title: "Serie Tiempo Rio Nilo"
+author: "Hugo Villegas"
+date: "2025-09-27"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: cerulean
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+    #install.packages("shiny")
+    #install.packages("DT")
+    #install.packages("writexl") # Para exportar a Excel
+    library(shiny)
+    library(DT)
+    library(writexl)
+# install.packages("downloadthis")
+library(downloadthis)
+library(ggfortify)
+library(dplyr)
+library(car)
+#install.packages("forecast")
+library(forecast)  #boxcox
+#library(FitAR)
+#install.packages("DT")
+library(DT)
+#install.packages("TSstudio")
+library(TSstudio)
+library(tseries)
+```
+
+
+<div style="
+    border-top: 3px solid #bbb; 
+    box-shadow: 0 4px 6px -4px #444; 
+    margin: 25px 0;
+"></div>
+
+
+## Carga de datos y analisis exploratorio
+
+
+```{r}
+data <- Nile
+plot(data, main="Caudal Rio Nilo", ylab="Caudal", xlab="Años", type="l", lwd=2)
+```
+Se comprueba mediante el adf.test la estacionaridad y se comprueba que no se puede rechazar la hipotesis Nula. Por lo cual, no se puede considerar estacionaria esta 
+
+
+```{r}
+adf.test(data)
+```
+
+
+## Probamos la técnica BoxCox
+
+
+
+```{r}
+lambda <- BoxCox.lambda(data)
+lambda
+
+bxcx.data <- BoxCox(data, lambda)
+```
+```{r}
+par(mfrow=c(1,1))
+plot(data, col="blue")
+lines(bxcx.data, col= "red")
+```
+
+Como se puede apreciar no produce practicamente ningun efecto la transformación. 
+
+
+## Modelar la tendencia.--
+
+Veamos si es posible aplicar diferenciación para quitar la tendencia.
+
+```{r}
+ndiffs(data, test="adf")
+```
+El estadístico me recomienda que no haga ninguna diferenciación.
+
+Vamos entonces por la eliminación de la tendencia por **regresión lineal**
+
+```{r}
+t <- time(data)
+Tc <- 1902 ## Selecicionamos año de quiebre (año en que sucede algo)
+
+dummy <- ifelse(t>Tc, t-Tc,0)
+modelo <- lm(data ~ t + dummy)
+
+plot(data, col="darkblue", main="Regresión con cambio estructural en 1902", lwd=2)
+lines(modelo$fitted.values~c(time(data)), col="darkred", lwd=2)
+
+
+
+
+```
+
+Ahora el modelo sin tendencia es:
+
+```{r}
+modelo.sin.tend <- resid(modelo)
+plot(modelo.sin.tend, type="l", col="darkred", lwd=2)
+```
+
+
+<div style="
+    border-top: 3px solid #bbb; 
+    box-shadow: 0 4px 6px -4px #444; 
+    margin: 25px 0;
+"></div>
+
+## Evaluación de Estacionaridad
+
+Probamos ahora el modelo quitándole la tendencia y aplicando el estadístico adt.test, obtenemos lo siguiente:
+
+```{r}
+adf.test(modelo.sin.tend)
+```
+Por lo anterior, como p-value = 0.01016 < 0.05, rechazamos la hipótesis nula y aceptar la estacionaridad.
+
+
+
+```{r, include=FALSE}
+
+# Chunk de R en tu .Rmd
+datos_filtrados <- iris[iris$Species == "setosa", ]
+
+datos_filtrados %>%
+  download_this(
+    output_name = "iris_setosa_filtrado",
+    output_extension = ".csv",
+    button_label = "Descargar Datos Filtrados como pdf",
+    button_type = "success"
+  )
+```
+
+
+
